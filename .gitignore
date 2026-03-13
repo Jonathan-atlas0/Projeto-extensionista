@@ -1,0 +1,46 @@
+# ===============================
+# IDEs
+# ===============================
+
+# IntelliJ
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ===============================
+# Java / Maven
+# ===============================
+
+target/
+*.class
+*.log
+
+# ===============================
+# Sistema operacional
+# ===============================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===============================
+# Arquivos temporários
+# ===============================
+
+*.tmp
+*.swp
+
+# ===============================
+# Node (caso frontend use no futuro)
+# ===============================
+
+node_modules/
+dist/
+build/
