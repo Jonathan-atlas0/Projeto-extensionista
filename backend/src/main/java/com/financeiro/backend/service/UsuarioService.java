@@ -1,15 +1,16 @@
 package com.financeiro.backend.service;
 
+import com.financeiro.backend.dto.request.UsuarioPerfilRequestDTO;
 import com.financeiro.backend.dto.response.UsuarioResponseDTO;
 import com.financeiro.backend.entity.Usuario;
+import com.financeiro.backend.exception.BusinessException;
 import com.financeiro.backend.exception.ResourceNotFoundException;
 import com.financeiro.backend.repository.UsuarioRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-// @Service: registra essa classe como serviço gerenciado pelo Spring
-// Camada responsável pelas regras de negócio relacionadas ao usuário
 @Service
 public class UsuarioService {
 
@@ -20,10 +21,10 @@ public class UsuarioService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Lista todos os usuários cadastrados
-    // Retorna ResponseDTO para não expor a senha
-    // Usado por admins para visualizar todos os usuários
+    // ÁREA DO ADMIN
     // ─────────────────────────────────────────────────────────────────────────
+
+    // Lista todos os usuários — apenas admin
     public List<UsuarioResponseDTO> listarTodos() {
         return usuarioRepository.findAll()
                 .stream()
@@ -31,10 +32,7 @@ public class UsuarioService {
                 .toList();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Busca um usuário pelo ID
-    // Lança ResourceNotFoundException se não encontrar — capturado pelo GlobalExceptionHandler
-    // ─────────────────────────────────────────────────────────────────────────
+    // Busca qualquer usuário pelo ID — apenas admin
     public UsuarioResponseDTO buscarPorId(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -43,28 +41,56 @@ public class UsuarioService {
         return UsuarioResponseDTO.fromEntity(usuario);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Busca um usuário pelo e-mail
-    // Usado internamente por outros Services
-    // ─────────────────────────────────────────────────────────────────────────
-    public UsuarioResponseDTO buscarPorEmail(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuário não encontrado com o e-mail: " + email
-                ));
-        return UsuarioResponseDTO.fromEntity(usuario);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Deleta um usuário pelo ID
-    // Lança ResourceNotFoundException se o usuário não existir
-    // ─────────────────────────────────────────────────────────────────────────
-    public void deletar(Long id) {
+    // Deleta qualquer usuário pelo ID — apenas admin
+    public void deletarPorId(Long id) {
         if (!usuarioRepository.existsById(id)) {
             throw new ResourceNotFoundException(
                     "Usuário não encontrado com o id: " + id
             );
         }
         usuarioRepository.deleteById(id);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ÁREA DO USUÁRIO LOGADO
+    // SecurityContextHolder.getContext().getAuthentication().getName()
+    // retorna o e-mail do usuário autenticado extraído do token JWT
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Retorna o perfil do próprio usuário logado
+    public UsuarioResponseDTO verMeuPerfil() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado"
+                ));
+        return UsuarioResponseDTO.fromEntity(usuario);
+    }
+
+    // Atualiza nome e/ou senha do próprio usuário logado
+    // Não permite alterar e-mail ou role por segurança
+    public UsuarioResponseDTO atualizarMeuPerfil(UsuarioPerfilRequestDTO dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado"
+                ));
+
+        // Atualiza apenas os campos permitidos
+        if (dto.nome() != null && !dto.nome().isBlank()) {
+            usuario.setNome(dto.nome());
+        }
+
+        return UsuarioResponseDTO.fromEntity(usuarioRepository.save(usuario));
+    }
+
+    // Deleta a própria conta do usuário logado
+    public void deletarMinhaConta() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado"
+                ));
+        usuarioRepository.delete(usuario);
     }
 }
