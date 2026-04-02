@@ -29,50 +29,49 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    // Define as regras de acesso é o "porteiro" da API
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desabilita CSRF pois a API é stateless
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
+
                         // Rotas públicas — não precisam de token
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro").permitAll()
-                        // Conteúdo educativo é público para leitura
                         .requestMatchers(HttpMethod.GET, "/api/conteudos/**").permitAll()
-                        // Swagger público para documentação e testes
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/api-docs/**"
                         ).permitAll()
+
+                        // Rotas exclusivas de ADMIN
+                        // hasRole("ADMIN") verifica se o usuário tem "ROLE_ADMIN"
+                        .requestMatchers("/api/usuarios/admin/**").hasRole("ADMIN")
+
+                        // Rotas de perfil — qualquer usuário autenticado
+                        .requestMatchers("/api/usuarios/perfil/**").authenticated()
+
                         // Qualquer outra rota exige token JWT válido
                         .anyRequest().authenticated()
                 )
 
-                // API stateless — sem sessão, cada requisição usa o token
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Define como autenticar (usuário + senha com BCrypt)
                 .authenticationProvider(authenticationProvider())
-
-                // Adiciona o JwtFilter antes do filtro padrão do Spring
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // Define BCrypt como algoritmo de criptografia das senhas
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // Diz ao Spring como autenticar: busca usuário no banco e compara senha com BCrypt
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
@@ -80,7 +79,6 @@ public class SecurityConfig {
         return provider;
     }
 
-    // Componente central de autenticação usado pelo AuthService no login
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config) throws Exception {
