@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "conteudos_educativos")
+@Table(name = "conteudo_educativo")
 @Data
 @Builder
 @NoArgsConstructor
@@ -29,29 +29,45 @@ public class ConteudoEducativo {
   private String titulo;
 
   @NotBlank(message = "Descrição é obrigatória")
-  @Size(max = 2000, message = "Descrição deve ter no máximo 2000 caracteres")
-  @Column(nullable = false, columnDefinition = "TEXT")
+  @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
+  @Column(nullable = false, length = 500)
   private String descricao;
+
+  @NotBlank(message = "Conteúdo é obrigatório")
+  @Column(nullable = false, columnDefinition = "TEXT")
+  private String conteudo;
 
   @Enumerated(EnumType.STRING)
   @NotNull(message = "Categoria é obrigatória")
-  @Column(nullable = false)
-  public CategoriaConteudo categoriaConteudo;
+  @Column(name = "categoria", nullable = false, length = 50)
+  private CategoriaConteudo categoriaConteudo;
 
   @Enumerated(EnumType.STRING)
   @NotNull (message = "Nível de dificuldade é obrigatório")
-  @Column(nullable = false)
+  @Column(name = "nivel", nullable = false, length = 20)
   private NivelDificuldade nivelDificuldade;
 
   @Builder.Default
-  @Column(nullable = false, updatable = false)
+  @Column(name = "criado_em", nullable = false, updatable = false)
   private LocalDateTime criadoEm = LocalDateTime.now();
 
   @Builder.Default
-  @Column(nullable = false)
+  @Column(name = "atualizado_em", nullable = false)
   private LocalDateTime atualizadoEm = LocalDateTime.now();
 
   @Builder.Default
   @Column(nullable = false)
-  public Boolean publicado = false;
+  private Boolean visivel = false;
+
+  @PrePersist
+  void prePersist() {
+    LocalDateTime agora = LocalDateTime.now();
+    criadoEm = agora;
+    atualizadoEm = agora;
+  }
+
+  @PreUpdate
+  void preUpdate() {
+    atualizadoEm = LocalDateTime.now();
+  }
 }

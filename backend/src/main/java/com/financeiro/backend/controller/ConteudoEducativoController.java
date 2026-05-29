@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
-
 @RestController
 @RequestMapping("/api/conteudos")
 
@@ -28,13 +26,13 @@ public class ConteudoEducativoController {
     @GetMapping()
     @Operation(summary = "[PUBLICADOS] Listar todos as publicações")
     public ResponseEntity<List<ConteudoEducativoResponseDTO>> listarPublicado(){
-        return ResponseEntity.ok(conteudoEducativoService.listarPublicado());
+        return ResponseEntity.ok(conteudoEducativoService.listarVisiveis());
     }
 
     @GetMapping ("/{id}")
     @Operation(summary = "[PUBLICADOS] Buscar conteúdo por ID")
     public ResponseEntity<ConteudoEducativoResponseDTO>buscarPorId(@PathVariable Long id){
-        return ResponseEntity.ok(conteudoEducativoService.buscarPorId(id));
+        return ResponseEntity.ok(conteudoEducativoService.buscarVisivelPorId(id));
     }
 
     @PostMapping

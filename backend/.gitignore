@@ -1,4 +1,12 @@
 HELP.md
+.env
+application-prod.yml
+src/main/resources/application.yaml
+src/main/resources/application-*.local.yaml
+*.class
+*.jar
+hs_err_*.log
+replay_pid*.log
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

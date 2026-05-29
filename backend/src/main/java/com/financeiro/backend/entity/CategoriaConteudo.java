@@ -1,5 +1,9 @@
 package com.financeiro.backend.entity;
 
 public enum CategoriaConteudo {
-    ORCAMENTO,INVESTIMENTOS,DIVIDAS,POUPANCA
+    PLANEJAMENTO,
+    ORCAMENTO,
+    DIVIDAS,
+    POUPANCA,
+    CONSUMO
 }

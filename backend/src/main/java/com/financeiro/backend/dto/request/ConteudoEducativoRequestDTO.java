@@ -12,17 +12,17 @@ public record ConteudoEducativoRequestDTO(
         String titulo,
 
         @NotBlank(message = "Descrição é obrigatória")
-        @Size(max = 2000, message = "Descrição deve ter no máximo 2000 caracteres")
+        @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
         String descricao,
+
+        @NotBlank(message = "Conteúdo é obrigatório")
+        String conteudo,
 
         @NotNull(message = "Categoria é obrigatória")
         CategoriaConteudo categoriaConteudo,
 
         @NotNull (message = "Nível de dificuldade é obrigatório")
-        NivelDificuldade nivelDificuldade
+        NivelDificuldade nivelDificuldade,
 
-
-
-
-
+        Boolean visivel
         ){}

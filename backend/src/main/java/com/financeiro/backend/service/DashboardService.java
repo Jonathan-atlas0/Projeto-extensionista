@@ -1,55 +1,45 @@
 package com.financeiro.backend.service;
 
-import com.financeiro.backend.dto.response.DashboardDTO;
+import com.financeiro.backend.dto.response.DashboardResponseDTO;
+import com.financeiro.backend.dto.response.GraficoGastosDTO;
 import com.financeiro.backend.dto.response.RelatorioMensalDTO;
-import com.financeiro.backend.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class DashboardService {
 
-    private final UsuarioRepository usuarioRepository;
+    private final RelatorioService relatorioService;
 
-    /**
-     * Retorna o painel financeiro completo do usuário autenticado.
-     *
-     * @param usuarioId ID do usuário autenticado
-     * @return DashboardDTO com saldo, receitas/despesas do mês, gráfico e relatório
-     */
-    public DashboardDTO obterDashboard(Long usuarioId) {
-
-        return DashboardDTO.builder()
-                .saldoAtual(BigDecimal.ZERO)
-                .receitasMes(BigDecimal.ZERO)
-                .despesasMes(BigDecimal.ZERO)
-                .graficoGastos(List.of())
-                .relatorioMesAtual(gerarRelatorioAtual(usuarioId))
-                .build();
+    public DashboardService(RelatorioService relatorioService) {
+        this.relatorioService = relatorioService;
     }
 
-    /**
-     * Gera o relatório do mês/ano atuais como apoio ao dashboard.
-     *
-     * @param usuarioId ID do usuário autenticado
-     * @return RelatorioMensalDTO com mês e ano correntes e valores zerados
-     */
-    private RelatorioMensalDTO gerarRelatorioAtual(Long usuarioId) {
+    @Transactional(readOnly = true)
+    public DashboardResponseDTO obterDashboard(Long usuarioId, Integer mes, Integer ano) {
         LocalDate hoje = LocalDate.now();
+        int mesReferencia = mes != null ? mes : hoje.getMonthValue();
+        int anoReferencia = ano != null ? ano : hoje.getYear();
 
+        RelatorioMensalDTO relatorio = relatorioService.gerarRelatorioMensal(usuarioId, mesReferencia, anoReferencia);
+        List<GraficoGastosDTO> gastosPorCategoria = relatorio.gastosPorCategoria();
+        String maiorCategoriaGasto = gastosPorCategoria.stream()
+                .max(Comparator.comparing(GraficoGastosDTO::total))
+                .map(GraficoGastosDTO::categoria)
+                .orElse(null);
 
-        return RelatorioMensalDTO.builder()
-                .mes(hoje.getMonthValue())
-                .ano(hoje.getYear())
-                .totalReceitas(BigDecimal.ZERO)
-                .totalDespesas(BigDecimal.ZERO)
-                .saldo(BigDecimal.ZERO)
-                .totalTransacoes(0)
-                .build();
+        return new DashboardResponseDTO(
+                mesReferencia,
+                anoReferencia,
+                relatorio.totalReceitas(),
+                relatorio.totalDespesas(),
+                relatorio.saldo(),
+                maiorCategoriaGasto,
+                gastosPorCategoria
+        );
     }
 }

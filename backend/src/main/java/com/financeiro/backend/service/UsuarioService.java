@@ -43,11 +43,18 @@ public class UsuarioService {
 
     // Deleta qualquer usuário pelo ID — apenas admin
     public void deletarPorId(Long id) {
-        if (!usuarioRepository.existsById(id)) {
-            throw new ResourceNotFoundException(
-                    "Usuário não encontrado com o id: " + id
-            );
+        String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuarioLogado = usuarioRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+
+        if (usuarioLogado.getId().equals(id)) {
+            throw new BusinessException("Admin não pode deletar a própria conta pelo endpoint admin");
         }
+
+        if (!usuarioRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Usuário não encontrado com o id: " + id);
+        }
+
         usuarioRepository.deleteById(id);
     }
 

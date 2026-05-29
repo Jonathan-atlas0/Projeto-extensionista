@@ -10,11 +10,12 @@ public record ConteudoEducativoResponseDTO(
         Long id,
         String titulo,
         String descricao,
+        String conteudo,
         CategoriaConteudo categoriaConteudo,
         NivelDificuldade nivelDificuldade,
         LocalDateTime criadoEm,
         LocalDateTime atualizadoEm,
-        Boolean publicado
+        Boolean visivel
 
 ) {
     public static  ConteudoEducativoResponseDTO fromEntity (ConteudoEducativo conteudoEducativo){
@@ -22,11 +23,12 @@ public record ConteudoEducativoResponseDTO(
                 conteudoEducativo.getId(),
                 conteudoEducativo.getTitulo(),
                 conteudoEducativo.getDescricao(),
+                conteudoEducativo.getConteudo(),
                 conteudoEducativo.getCategoriaConteudo(),
                 conteudoEducativo.getNivelDificuldade(),
                 conteudoEducativo.getCriadoEm(),
                 conteudoEducativo.getAtualizadoEm(),
-                conteudoEducativo.getPublicado()
+                conteudoEducativo.getVisivel()
         );
 
     }

@@ -2,49 +2,83 @@ package com.financeiro.backend.service;
 
 import com.financeiro.backend.dto.response.GraficoGastosDTO;
 import com.financeiro.backend.dto.response.RelatorioMensalDTO;
-import com.financeiro.backend.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import com.financeiro.backend.exception.BusinessException;
+import com.financeiro.backend.repository.DespesaRepository;
+import com.financeiro.backend.repository.ReceitaRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class RelatorioService {
 
-    private final UsuarioRepository usuarioRepository;
+    private final ReceitaRepository receitaRepository;
+    private final DespesaRepository despesaRepository;
 
-    /**
-     * Gera o relatório mensal consolidado para o usuário informado.
-     *
-     * @param usuarioId ID do usuário autenticado
-     * @param mes       mês de referência (1-12)
-     * @param ano       ano de referência
-     * @return RelatorioMensalDTO com os totais do período
-     */
-    public RelatorioMensalDTO gerarRelatorioMensal(Long usuarioId, int mes, int ano) {
-
-        return RelatorioMensalDTO.builder()
-                .mes(mes)
-                .ano(ano)
-                .totalReceitas(BigDecimal.ZERO)
-                .totalDespesas(BigDecimal.ZERO)
-                .saldo(BigDecimal.ZERO)
-                .totalTransacoes(0)
-                .build();
+    public RelatorioService(ReceitaRepository receitaRepository, DespesaRepository despesaRepository) {
+        this.receitaRepository = receitaRepository;
+        this.despesaRepository = despesaRepository;
     }
 
-    /**
-     * Retorna os gastos agrupados por categoria para montagem de gráfico.
-     *
-     * @param usuarioId ID do usuário autenticado
-     * @param mes       mês de referência (1-12)
-     * @param ano       ano de referência
-     * @return lista de GraficoGastosDTO com categoria, valor e percentual
-     */
-    public List<GraficoGastosDTO> obterGraficoGastos(Long usuarioId, int mes, int ano) {
+    @Transactional(readOnly = true)
+    public RelatorioMensalDTO gerarRelatorioMensal(Long usuarioId, int mes, int ano) {
+        PeriodoMensal periodo = criarPeriodo(mes, ano);
+        BigDecimal totalReceitas = receitaRepository.somarPorUsuarioEPeriodo(usuarioId, periodo.inicio(), periodo.fim());
+        BigDecimal totalDespesas = despesaRepository.somarPorUsuarioEPeriodo(usuarioId, periodo.inicio(), periodo.fim());
+        long totalTransacoes = receitaRepository.countByUsuarioIdAndDataBetween(usuarioId, periodo.inicio(), periodo.fim())
+                + despesaRepository.countByUsuarioIdAndDataBetween(usuarioId, periodo.inicio(), periodo.fim());
 
-        return List.of();
+        return new RelatorioMensalDTO(
+                mes,
+                ano,
+                totalReceitas,
+                totalDespesas,
+                totalReceitas.subtract(totalDespesas),
+                totalTransacoes,
+                obterGraficoGastos(usuarioId, mes, ano)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<GraficoGastosDTO> obterGraficoGastos(Long usuarioId, int mes, int ano) {
+        PeriodoMensal periodo = criarPeriodo(mes, ano);
+        BigDecimal totalDespesas = despesaRepository.somarPorUsuarioEPeriodo(usuarioId, periodo.inicio(), periodo.fim());
+
+        return despesaRepository.somarPorCategoria(usuarioId, periodo.inicio(), periodo.fim())
+                .stream()
+                .map(resultado -> criarGraficoGasto(resultado, totalDespesas))
+                .toList();
+    }
+
+    private GraficoGastosDTO criarGraficoGasto(Object[] resultado, BigDecimal totalDespesas) {
+        String categoria = (String) resultado[0];
+        BigDecimal totalCategoria = (BigDecimal) resultado[1];
+        double percentual = BigDecimal.ZERO.compareTo(totalDespesas) == 0
+                ? 0.0
+                : totalCategoria
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalDespesas, 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+
+        return new GraficoGastosDTO(categoria, totalCategoria, percentual);
+    }
+
+    private PeriodoMensal criarPeriodo(int mes, int ano) {
+        if (mes < 1 || mes > 12) {
+            throw new BusinessException("Mês deve estar entre 1 e 12");
+        }
+        if (ano < 1900) {
+            throw new BusinessException("Ano informado é inválido");
+        }
+
+        LocalDate inicio = LocalDate.of(ano, mes, 1);
+        return new PeriodoMensal(inicio, inicio.withDayOfMonth(inicio.lengthOfMonth()));
+    }
+
+    private record PeriodoMensal(LocalDate inicio, LocalDate fim) {
     }
 }
