@@ -13,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -21,17 +22,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            JwtUtil jwtUtil
+            JwtUtil jwtUtil,
+            RefreshTokenService refreshTokenService
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenService = refreshTokenService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -42,6 +46,7 @@ public class AuthService {
     // 3. Salva o usuário no banco
     // 4. Retorna os dados do usuário (sem a senha)
     // ─────────────────────────────────────────────────────────────────────────
+    @Transactional
     public UsuarioResponseDTO registrar(RegistroRequestDTO dto) {
 
         // Regra de negócio: e-mail único
@@ -70,6 +75,7 @@ public class AuthService {
     // 2. Se inválido lança BadCredentialsException — capturado pelo GlobalExceptionHandler
     // 3. Se válido, gera o token JWT e retorna com os dados do usuário
     // ─────────────────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO dto) {
 
         // O AuthenticationManager aciona o UserDetailsServiceImpl para buscar
@@ -84,13 +90,35 @@ public class AuthService {
 
         // Gera o token JWT com o e-mail do usuário como subject
         String token = jwtUtil.gerarToken(usuario);
+        String refreshToken = refreshTokenService.criar(usuario);
 
         // Retorna o token + dados básicos do usuário para o frontend
         return new LoginResponseDTO(
                 token,
+                refreshToken,
                 usuario.getNome(),
                 usuario.getEmail(),
                 usuario.getRole()
         );
+    }
+
+    @Transactional
+    public LoginResponseDTO refresh(String refreshTokenAtual) {
+        Usuario usuario = refreshTokenService.consumir(refreshTokenAtual);
+        String token = jwtUtil.gerarToken(usuario);
+        String refreshToken = refreshTokenService.criar(usuario);
+
+        return new LoginResponseDTO(
+                token,
+                refreshToken,
+                usuario.getNome(),
+                usuario.getEmail(),
+                usuario.getRole()
+        );
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revogar(refreshToken);
     }
 }

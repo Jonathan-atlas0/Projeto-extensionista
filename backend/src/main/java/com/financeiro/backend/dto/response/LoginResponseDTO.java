@@ -5,12 +5,13 @@ package com.financeiro.backend.dto.response;
 public record LoginResponseDTO(
         String token,
         String tipo,
+        String refreshToken,
         String nome,
         String email,
         String role
 ) {
     // Construtor auxiliar que define "Bearer" como tipo padrão do token
-    public LoginResponseDTO(String token, String nome, String email, String role) {
-        this(token, "Bearer", nome, email, role);
+    public LoginResponseDTO(String token, String refreshToken, String nome, String email, String role) {
+        this(token, "Bearer", refreshToken, nome, email, role);
     }
 }

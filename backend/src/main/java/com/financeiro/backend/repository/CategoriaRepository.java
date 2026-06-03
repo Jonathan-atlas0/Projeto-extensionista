@@ -13,4 +13,8 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
     List<Categoria> findByTipoOrderByNomeAsc(TipoCategoria tipo);
 
     List<Categoria> findAllByOrderByTipoAscNomeAsc();
+
+    boolean existsByNomeIgnoreCaseAndTipo(String nome, TipoCategoria tipo);
+
+    boolean existsByNomeIgnoreCaseAndTipoAndIdNot(String nome, TipoCategoria tipo, Long id);
 }

@@ -66,11 +66,16 @@ class ApiSecurityMockMvcTests {
         mockMvc.perform(get("/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/auth/login']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/refresh']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/logout']").exists())
                 .andExpect(jsonPath("$.paths['/api/receitas']").exists())
                 .andExpect(jsonPath("$.paths['/api/despesas']").exists())
                 .andExpect(jsonPath("$.paths['/api/dashboard']").exists())
                 .andExpect(jsonPath("$.paths['/api/relatorios/mensal']").exists())
-                .andExpect(jsonPath("$.paths['/api/conteudos']").exists());
+                .andExpect(jsonPath("$.paths['/api/conteudos']").exists())
+                .andExpect(jsonPath("$.paths['/api/usuarios/perfil/senha']").exists())
+                .andExpect(jsonPath("$.paths['/api/categorias/admin']").exists())
+                .andExpect(jsonPath("$.paths['/api/categorias/admin/{id}']").exists());
     }
 
     @Test
@@ -104,6 +109,83 @@ class ApiSecurityMockMvcTests {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.erro").value("Token JWT inválido ou expirado"));
+    }
+
+    @Test
+    void deveRotacionarRefreshToken() throws Exception {
+        String email = "usuario-" + UUID.randomUUID() + "@teste.local";
+        String senha = "123456";
+
+        mockMvc.perform(post("/api/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegistroRequestDTO("Usuario Teste", email, senha)
+                        )))
+                .andExpect(status().isCreated());
+
+        JsonNode login = loginResponse(email, senha);
+        String refreshTokenAntigo = login.get("refreshToken").asText();
+
+        String refreshResponse = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshTokenAntigo)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode refresh = objectMapper.readTree(refreshResponse);
+        assertThat(refresh.get("refreshToken").asText()).isNotEqualTo(refreshTokenAntigo);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshTokenAntigo)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Refresh token inválido ou expirado"));
+    }
+
+    @Test
+    void deveRevogarRefreshTokenNoLogout() throws Exception {
+        String email = "usuario-" + UUID.randomUUID() + "@teste.local";
+        String senha = "123456";
+
+        mockMvc.perform(post("/api/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegistroRequestDTO("Usuario Teste", email, senha)
+                        )))
+                .andExpect(status().isCreated());
+
+        String refreshToken = loginResponse(email, senha).get("refreshToken").asText();
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Refresh token inválido ou expirado"));
     }
 
     @Test
@@ -154,6 +236,63 @@ class ApiSecurityMockMvcTests {
 
         JsonNode json = objectMapper.readTree(response);
         assertThat(json.get("token").asText()).isNotBlank();
+        assertThat(json.get("refreshToken").asText()).isNotBlank();
+    }
+
+    @Test
+    void deveAlterarSenhaDoUsuarioLogado() throws Exception {
+        String email = "usuario-" + UUID.randomUUID() + "@teste.local";
+        String senhaAtual = "123456";
+        String novaSenha = "novaSenha123";
+
+        mockMvc.perform(post("/api/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegistroRequestDTO("Usuario Teste", email, senhaAtual)
+                        )))
+                .andExpect(status().isCreated());
+
+        String token = login(email, senhaAtual);
+
+        mockMvc.perform(put("/api/usuarios/perfil/senha")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "%s",
+                                  "novaSenha": "%s",
+                                  "confirmacaoNovaSenha": "%s"
+                                }
+                                """.formatted(senhaAtual, novaSenha, novaSenha)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequestDTO(email, senhaAtual)
+                        )))
+                .andExpect(status().isUnauthorized());
+
+        String novoToken = login(email, novaSenha);
+        assertThat(novoToken).isNotBlank();
+    }
+
+    @Test
+    void deveRejeitarAlteracaoDeSenhaComConfirmacaoDiferente() throws Exception {
+        String token = registrarELogarUsuarioComum();
+
+        mockMvc.perform(put("/api/usuarios/perfil/senha")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "123456",
+                                  "novaSenha": "novaSenha123",
+                                  "confirmacaoNovaSenha": "outraSenha123"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Nova senha e confirmação não conferem"));
     }
 
     @Test
@@ -292,6 +431,102 @@ class ApiSecurityMockMvcTests {
     }
 
     @Test
+    void devePermitirAdminGerenciarCategoriaNaoPadrao() throws Exception {
+        String tokenAdmin = criarAdminELogar();
+        String nome = "Investimentos " + UUID.randomUUID().toString().substring(0, 8);
+
+        String criacao = mockMvc.perform(post("/api/categorias/admin")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "%s",
+                                  "tipo": "RECEITA"
+                                }
+                                """.formatted(nome)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nome").value(nome))
+                .andExpect(jsonPath("$.tipo").value("RECEITA"))
+                .andExpect(jsonPath("$.padrao").value(false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long categoriaId = objectMapper.readTree(criacao).get("id").asLong();
+        String nomeAtualizado = nome + " Plus";
+
+        mockMvc.perform(get("/api/categorias/admin/{id}", categoriaId)
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(categoriaId))
+                .andExpect(jsonPath("$.nome").value(nome));
+
+        mockMvc.perform(put("/api/categorias/admin/{id}", categoriaId)
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "%s",
+                                  "tipo": "RECEITA"
+                                }
+                                """.formatted(nomeAtualizado)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value(nomeAtualizado))
+                .andExpect(jsonPath("$.tipo").value("RECEITA"));
+
+        mockMvc.perform(delete("/api/categorias/admin/{id}", categoriaId)
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deveNegarCrudDeCategoriaParaUsuarioComum() throws Exception {
+        String token = registrarELogarUsuarioComum();
+
+        mockMvc.perform(post("/api/categorias/admin")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "Categoria comum",
+                                  "tipo": "DESPESA"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.erro").value("Acesso negado"));
+
+        mockMvc.perform(get("/api/categorias/admin/{id}", 1L)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.erro").value("Acesso negado"));
+    }
+
+    @Test
+    void deveProtegerCategoriaPadraoContraExclusao() throws Exception {
+        String tokenAdmin = criarAdminELogar();
+        Long categoriaPadraoId = buscarPrimeiraCategoriaId(tokenAdmin, "RECEITA");
+
+        mockMvc.perform(delete("/api/categorias/admin/{id}", categoriaPadraoId)
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Categorias padrão não podem ser removidas"));
+    }
+
+    @Test
+    void deveImpedirRemoverCategoriaEmUso() throws Exception {
+        String tokenAdmin = criarAdminELogar();
+        String tokenUsuario = registrarELogarUsuarioComum();
+        Long categoriaId = criarCategoriaAdmin(tokenAdmin, "Despesa Admin " + UUID.randomUUID().toString().substring(0, 8), "DESPESA");
+
+        criarDespesa(tokenUsuario, categoriaId, "Despesa com categoria customizada", "50.00", "2026-05-14");
+
+        mockMvc.perform(delete("/api/categorias/admin/{id}", categoriaId)
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Categoria não pode ser removida porque está em uso"));
+    }
+
+    @Test
     void deveExecutarCrudCompletoDeReceitasComTokenValido() throws Exception {
         String token = registrarELogarUsuarioComum();
         Long categoriaId = buscarPrimeiraCategoriaId(token, "RECEITA");
@@ -422,17 +657,7 @@ class ApiSecurityMockMvcTests {
                         )))
                 .andExpect(status().isCreated());
 
-        String response = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new LoginRequestDTO(email, senha)
-                        )))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return objectMapper.readTree(response).get("token").asText();
+        return login(email, senha);
     }
 
     private String criarAdminELogar() throws Exception {
@@ -447,6 +672,14 @@ class ApiSecurityMockMvcTests {
                 .build();
         usuarioRepository.save(admin);
 
+        return login(email, senha);
+    }
+
+    private String login(String email, String senha) throws Exception {
+        return loginResponse(email, senha).get("token").asText();
+    }
+
+    private JsonNode loginResponse(String email, String senha) throws Exception {
         String response = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -457,7 +690,7 @@ class ApiSecurityMockMvcTests {
                 .getResponse()
                 .getContentAsString();
 
-        return objectMapper.readTree(response).get("token").asText();
+        return objectMapper.readTree(response);
     }
 
     private Long buscarPrimeiraCategoriaId(String token, String tipo) throws Exception {
@@ -505,6 +738,24 @@ class ApiSecurityMockMvcTests {
                                   "categoriaId": %d
                                 }
                                 """.formatted(descricao, valor, data, categoriaId)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).get("id").asLong();
+    }
+
+    private Long criarCategoriaAdmin(String token, String nome, String tipo) throws Exception {
+        String response = mockMvc.perform(post("/api/categorias/admin")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "%s",
+                                  "tipo": "%s"
+                                }
+                                """.formatted(nome, tipo)))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()

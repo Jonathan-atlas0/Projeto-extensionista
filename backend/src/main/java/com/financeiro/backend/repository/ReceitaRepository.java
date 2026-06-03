@@ -18,6 +18,8 @@ public interface ReceitaRepository extends JpaRepository<Receita, Long> {
 
     Optional<Receita> findByIdAndUsuarioId(Long id, Long usuarioId);
 
+    boolean existsByCategoriaId(Long categoriaId);
+
     long countByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
 
     @Query("""

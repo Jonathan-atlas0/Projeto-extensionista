@@ -1,6 +1,7 @@
 package com.financeiro.backend.controller;
 
 import com.financeiro.backend.dto.request.LoginRequestDTO;
+import com.financeiro.backend.dto.request.RefreshTokenRequestDTO;
 import com.financeiro.backend.dto.request.RegistroRequestDTO;
 import com.financeiro.backend.dto.response.LoginResponseDTO;
 import com.financeiro.backend.dto.response.UsuarioResponseDTO;
@@ -55,5 +56,20 @@ public class AuthController {
             @RequestBody @Valid LoginRequestDTO dto) {
         LoginResponseDTO response = authService.login(dto);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Renovar token de acesso")
+    public ResponseEntity<LoginResponseDTO> refresh(
+            @RequestBody @Valid RefreshTokenRequestDTO dto) {
+        return ResponseEntity.ok(authService.refresh(dto.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Revogar refresh token")
+    public ResponseEntity<Void> logout(
+            @RequestBody @Valid RefreshTokenRequestDTO dto) {
+        authService.logout(dto.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

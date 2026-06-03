@@ -48,6 +48,8 @@ public class SecurityConfig {
                         // Rotas públicas — não precisam de token
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/conteudos/**").permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
@@ -58,6 +60,10 @@ public class SecurityConfig {
                         // Rotas exclusivas de ADMIN
                         // hasRole("ADMIN") verifica se o usuário tem "ROLE_ADMIN"
                         .requestMatchers("/api/usuarios/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/categorias/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/categorias/admin", "/api/categorias/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categorias/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categorias/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/conteudos/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/conteudos/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/conteudos/**").hasRole("ADMIN")

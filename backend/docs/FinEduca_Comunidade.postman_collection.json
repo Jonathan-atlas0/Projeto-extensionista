@@ -34,6 +34,22 @@
       "value": ""
     },
     {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "adminRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "newUserPassword",
+      "value": "novaSenha123"
+    },
+    {
+      "key": "categoriaAdminId",
+      "value": ""
+    },
+    {
       "key": "receitaCategoriaId",
       "value": "1"
     },
@@ -76,7 +92,8 @@
           "script": {
             "exec": [
               "const json = pm.response.json();",
-              "pm.collectionVariables.set('token', json.token);"
+              "pm.collectionVariables.set('token', json.token);",
+              "pm.collectionVariables.set('refreshToken', json.refreshToken);"
             ],
             "type": "text/javascript"
           }
@@ -217,7 +234,8 @@
           "script": {
             "exec": [
               "const json = pm.response.json();",
-              "pm.collectionVariables.set('adminToken', json.token);"
+              "pm.collectionVariables.set('adminToken', json.token);",
+              "pm.collectionVariables.set('adminRefreshToken', json.refreshToken);"
             ],
             "type": "text/javascript"
           }
@@ -257,6 +275,154 @@
           "mode": "raw",
           "raw": "{\n  \"titulo\": \"Reserva de emergencia\",\n  \"descricao\": \"Como comecar uma reserva com pouco dinheiro.\",\n  \"conteudo\": \"Separe uma pequena quantia todo mes antes de gastar com itens nao essenciais.\",\n  \"categoriaConteudo\": \"POUPANCA\",\n  \"nivelDificuldade\": \"BASICO\",\n  \"visivel\": true\n}"
         }
+      }
+    },
+    {
+      "name": "11 - Alterar senha usuario",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios/perfil/senha",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"senhaAtual\": \"{{userPassword}}\",\n  \"novaSenha\": \"{{newUserPassword}}\",\n  \"confirmacaoNovaSenha\": \"{{newUserPassword}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "12 - Refresh token usuario",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token', json.token);",
+              "pm.collectionVariables.set('refreshToken', json.refreshToken);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "13 - Logout usuario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "14 - Admin cria categoria",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('categoriaAdminId', json.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/categorias/admin",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Investimentos Demo {{$timestamp}}\",\n  \"tipo\": \"RECEITA\"\n}"
+        }
+      }
+    },
+    {
+      "name": "15 - Admin busca categoria",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/categorias/admin/{{categoriaAdminId}}"
+      }
+    },
+    {
+      "name": "16 - Admin atualiza categoria",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/categorias/admin/{{categoriaAdminId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Investimentos Atualizado {{$timestamp}}\",\n  \"tipo\": \"RECEITA\"\n}"
+        }
+      }
+    },
+    {
+      "name": "17 - Admin deleta categoria",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/categorias/admin/{{categoriaAdminId}}"
       }
     }
   ]

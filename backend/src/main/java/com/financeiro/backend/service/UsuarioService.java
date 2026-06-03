@@ -1,13 +1,16 @@
 package com.financeiro.backend.service;
 
+import com.financeiro.backend.dto.request.AlterarSenhaRequestDTO;
 import com.financeiro.backend.dto.request.UsuarioPerfilRequestDTO;
 import com.financeiro.backend.dto.response.UsuarioResponseDTO;
 import com.financeiro.backend.entity.Usuario;
 import com.financeiro.backend.exception.BusinessException;
 import com.financeiro.backend.exception.ResourceNotFoundException;
 import com.financeiro.backend.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,9 +18,11 @@ import java.util.List;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -25,6 +30,7 @@ public class UsuarioService {
     // ─────────────────────────────────────────────────────────────────────────
 
     // Lista todos os usuários — apenas admin
+    @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarTodos() {
         return usuarioRepository.findAll()
                 .stream()
@@ -33,6 +39,7 @@ public class UsuarioService {
     }
 
     // Busca qualquer usuário pelo ID — apenas admin
+    @Transactional(readOnly = true)
     public UsuarioResponseDTO buscarPorId(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -42,6 +49,7 @@ public class UsuarioService {
     }
 
     // Deleta qualquer usuário pelo ID — apenas admin
+    @Transactional
     public void deletarPorId(Long id) {
         String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuarioLogado = usuarioRepository.findByEmail(emailLogado)
@@ -65,6 +73,7 @@ public class UsuarioService {
     // ─────────────────────────────────────────────────────────────────────────
 
     // Retorna o perfil do próprio usuário logado
+    @Transactional(readOnly = true)
     public UsuarioResponseDTO verMeuPerfil() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByEmail(email)
@@ -74,8 +83,9 @@ public class UsuarioService {
         return UsuarioResponseDTO.fromEntity(usuario);
     }
 
-    // Atualiza nome e/ou senha do próprio usuário logado
+    // Atualiza apenas o nome do próprio usuário logado
     // Não permite alterar e-mail ou role por segurança
+    @Transactional
     public UsuarioResponseDTO atualizarMeuPerfil(UsuarioPerfilRequestDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByEmail(email)
@@ -91,7 +101,32 @@ public class UsuarioService {
         return UsuarioResponseDTO.fromEntity(usuarioRepository.save(usuario));
     }
 
+    @Transactional
+    public void alterarMinhaSenha(AlterarSenhaRequestDTO dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado"
+                ));
+
+        if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
+            throw new BusinessException("Senha atual inválida");
+        }
+
+        if (!dto.novaSenha().equals(dto.confirmacaoNovaSenha())) {
+            throw new BusinessException("Nova senha e confirmação não conferem");
+        }
+
+        if (passwordEncoder.matches(dto.novaSenha(), usuario.getSenha())) {
+            throw new BusinessException("Nova senha deve ser diferente da senha atual");
+        }
+
+        usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
+        usuarioRepository.save(usuario);
+    }
+
     // Deleta a própria conta do usuário logado
+    @Transactional
     public void deletarMinhaConta() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByEmail(email)

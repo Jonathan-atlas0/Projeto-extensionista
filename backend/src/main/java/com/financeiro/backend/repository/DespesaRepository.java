@@ -18,6 +18,8 @@ public interface DespesaRepository extends JpaRepository<Despesa, Long> {
 
     Optional<Despesa> findByIdAndUsuarioId(Long id, Long usuarioId);
 
+    boolean existsByCategoriaId(Long categoriaId);
+
     long countByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
 
     @Query("""

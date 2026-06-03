@@ -1,5 +1,6 @@
 package com.financeiro.backend.controller;
 
+import com.financeiro.backend.dto.request.AlterarSenhaRequestDTO;
 import com.financeiro.backend.dto.request.UsuarioPerfilRequestDTO;
 import com.financeiro.backend.dto.response.UsuarioResponseDTO;
 import com.financeiro.backend.service.UsuarioService;
@@ -74,6 +75,14 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> atualizarMeuPerfil(
             @RequestBody @Valid UsuarioPerfilRequestDTO dto) {
         return ResponseEntity.ok(usuarioService.atualizarMeuPerfil(dto));
+    }
+
+    @PutMapping("/perfil/senha")
+    @Operation(summary = "Alterar minha senha")
+    public ResponseEntity<Void> alterarMinhaSenha(
+            @RequestBody @Valid AlterarSenhaRequestDTO dto) {
+        usuarioService.alterarMinhaSenha(dto);
+        return ResponseEntity.noContent().build();
     }
 
     // DELETE /api/usuarios/perfil
