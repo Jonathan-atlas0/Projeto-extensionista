@@ -1,46 +1,18 @@
-# ===============================
-# IDEs
-# ===============================
+# Backend
+backend/target/
+backend/.mvn/
+backend/*.class
 
-# IntelliJ
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# IDE
 .idea/
 *.iml
-
-# VSCode
 .vscode/
 
-# Eclipse
-.project
-.classpath
-.settings/
-
-# ===============================
-# Java / Maven
-# ===============================
-
-target/
-*.class
-*.log
-
-# ===============================
-# Sistema operacional
-# ===============================
-
+# OS
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# ===============================
-# Arquivos temporários
-# ===============================
-
-*.tmp
-*.swp
-
-# ===============================
-# Node (caso frontend use no futuro)
-# ===============================
-
-node_modules/
-dist/
-build/
