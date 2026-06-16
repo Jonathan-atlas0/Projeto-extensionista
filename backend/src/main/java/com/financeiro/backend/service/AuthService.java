@@ -75,7 +75,7 @@ public class AuthService {
     // 2. Se inválido lança BadCredentialsException — capturado pelo GlobalExceptionHandler
     // 3. Se válido, gera o token JWT e retorna com os dados do usuário
     // ─────────────────────────────────────────────────────────────────────────
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto) {
 
         // O AuthenticationManager aciona o UserDetailsServiceImpl para buscar

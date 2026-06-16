@@ -25,7 +25,7 @@ public class DashboardService {
         int mesReferencia = mes != null ? mes : hoje.getMonthValue();
         int anoReferencia = ano != null ? ano : hoje.getYear();
 
-        RelatorioMensalDTO relatorio = relatorioService.gerarRelatorioMensal(usuarioId, mesReferencia, anoReferencia);
+        RelatorioMensalDTO relatorio = relatorioService.gerarRelatorioAcumulado(usuarioId, mesReferencia, anoReferencia);
         List<GraficoGastosDTO> gastosPorCategoria = relatorio.gastosPorCategoria();
         String maiorCategoriaGasto = gastosPorCategoria.stream()
                 .max(Comparator.comparing(GraficoGastosDTO::total))

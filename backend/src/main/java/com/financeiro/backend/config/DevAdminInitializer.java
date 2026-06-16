@@ -25,9 +25,9 @@ public class DevAdminInitializer implements CommandLineRunner {
     public DevAdminInitializer(
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${ADMIN_EMAIL:}") String adminEmail,
-            @Value("${ADMIN_PASSWORD:}") String adminPassword,
-            @Value("${ADMIN_NAME:Administrador Demo}") String adminName
+            @Value("${dev-admin.email:}") String adminEmail,
+            @Value("${dev-admin.password:}") String adminPassword,
+            @Value("${dev-admin.name:Administrador Demo}") String adminName
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;

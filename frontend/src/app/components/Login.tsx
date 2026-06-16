@@ -6,7 +6,7 @@ import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { setUsuarioLogado, setToken } from "../utils/storage";
-import { authApi } from "../utils/api";
+import { authApi, usuariosApi } from "../utils/api";
 import { BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,13 +23,23 @@ export function Login() {
   const [regEmail, setRegEmail] = useState("");
   const [regSenha, setRegSenha] = useState("");
 
+  const autenticar = async (email: string, senha: string) => {
+    const auth = await authApi.login(email, senha);
+    setToken(auth.token);
+
+    const usuario = await usuariosApi.perfil();
+    setUsuarioLogado({
+      id: String(usuario.id),
+      nome: usuario.nome,
+      email: usuario.email,
+    });
+  };
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await authApi.login(loginEmail, loginSenha);
-      setToken(res.token);
-      setUsuarioLogado({ id: String(res.id), nome: res.nome, email: res.email });
+      await autenticar(loginEmail, loginSenha);
       navigate("/");
     } catch (err: any) {
       toast.error(err.message || "Erro ao fazer login");
@@ -42,9 +52,8 @@ export function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await authApi.registro(regNome, regEmail, regSenha);
-      setToken(res.token);
-      setUsuarioLogado({ id: String(res.id), nome: res.nome, email: res.email });
+      await authApi.registro(regNome, regEmail, regSenha);
+      await autenticar(regEmail, regSenha);
       toast.success("Conta criada com sucesso!");
       navigate("/");
     } catch (err: any) {

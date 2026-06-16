@@ -5,23 +5,27 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Plus, Trash2, TrendingUp, Loader2 } from "lucide-react";
-import { receitasApi, ReceitaResponse } from "../utils/api";
-import { CATEGORIAS_RECEITA } from "../utils/storage";
+import { categoriasApi, CategoriaResponse, receitasApi, ReceitaResponse } from "../utils/api";
 import { toast } from "sonner";
 
 export function Receitas() {
   const [receitas, setReceitas] = useState<ReceitaResponse[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
 
   const carregar = async () => {
     try {
-      const dados = await receitasApi.listar();
+      const [dados, categoriasReceita] = await Promise.all([
+        receitasApi.listar(),
+        categoriasApi.listarPorTipo("RECEITA"),
+      ]);
       setReceitas(dados);
+      setCategorias(categoriasReceita);
     } catch (err: any) {
       toast.error(err.message || "Erro ao carregar receitas");
     } finally {
@@ -33,17 +37,17 @@ export function Receitas() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!descricao || !valor || !data || !categoria) return;
+    if (!descricao || !valor || !data || !categoriaId) return;
     setSalvando(true);
     try {
       const nova = await receitasApi.criar({
         descricao,
         valor: parseFloat(valor),
         data,
-        categoria,
+        categoriaId: Number(categoriaId),
       });
       setReceitas(prev => [nova, ...prev]);
-      setDescricao(""); setValor(""); setData(""); setCategoria("");
+      setDescricao(""); setValor(""); setData(""); setCategoriaId("");
       toast.success("Receita adicionada com sucesso!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao adicionar receita");
@@ -104,16 +108,16 @@ export function Receitas() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="categoria">Categoria</Label>
-                <Select value={categoria} onValueChange={setCategoria} required>
+                <Select value={categoriaId} onValueChange={setCategoriaId} required>
                   <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIAS_RECEITA.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    {categorias.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>{cat.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={salvando}>
+              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={salvando || categorias.length === 0}>
                 {salvando ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Plus className="size-4 mr-2" />}
                 Adicionar Receita
               </Button>

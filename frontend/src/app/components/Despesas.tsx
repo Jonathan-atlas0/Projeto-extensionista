@@ -5,23 +5,27 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Plus, Trash2, TrendingDown, Loader2 } from "lucide-react";
-import { despesasApi, DespesaResponse } from "../utils/api";
-import { CATEGORIAS_DESPESA } from "../utils/storage";
+import { categoriasApi, CategoriaResponse, despesasApi, DespesaResponse } from "../utils/api";
 import { toast } from "sonner";
 
 export function Despesas() {
   const [despesas, setDespesas] = useState<DespesaResponse[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
 
   const carregar = async () => {
     try {
-      const dados = await despesasApi.listar();
+      const [dados, categoriasDespesa] = await Promise.all([
+        despesasApi.listar(),
+        categoriasApi.listarPorTipo("DESPESA"),
+      ]);
       setDespesas(dados);
+      setCategorias(categoriasDespesa);
     } catch (err: any) {
       toast.error(err.message || "Erro ao carregar despesas");
     } finally {
@@ -33,17 +37,17 @@ export function Despesas() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!descricao || !valor || !data || !categoria) return;
+    if (!descricao || !valor || !data || !categoriaId) return;
     setSalvando(true);
     try {
       const nova = await despesasApi.criar({
         descricao,
         valor: parseFloat(valor),
         data,
-        categoria,
+        categoriaId: Number(categoriaId),
       });
       setDespesas(prev => [nova, ...prev]);
-      setDescricao(""); setValor(""); setData(""); setCategoria("");
+      setDescricao(""); setValor(""); setData(""); setCategoriaId("");
       toast.success("Despesa adicionada com sucesso!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao adicionar despesa");
@@ -104,16 +108,16 @@ export function Despesas() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="categoria">Categoria</Label>
-                <Select value={categoria} onValueChange={setCategoria} required>
+                <Select value={categoriaId} onValueChange={setCategoriaId} required>
                   <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIAS_DESPESA.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    {categorias.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>{cat.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={salvando}>
+              <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={salvando || categorias.length === 0}>
                 {salvando ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Plus className="size-4 mr-2" />}
                 Adicionar Despesa
               </Button>

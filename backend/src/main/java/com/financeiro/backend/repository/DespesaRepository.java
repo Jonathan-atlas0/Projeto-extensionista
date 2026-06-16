@@ -22,6 +22,8 @@ public interface DespesaRepository extends JpaRepository<Despesa, Long> {
 
     long countByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
 
+    long countByUsuarioIdAndDataLessThanEqual(Long usuarioId, LocalDate fim);
+
     @Query("""
             select coalesce(sum(d.valor), 0)
             from Despesa d
@@ -31,6 +33,17 @@ public interface DespesaRepository extends JpaRepository<Despesa, Long> {
     BigDecimal somarPorUsuarioEPeriodo(
             @Param("usuarioId") Long usuarioId,
             @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+
+    @Query("""
+            select coalesce(sum(d.valor), 0)
+            from Despesa d
+            where d.usuario.id = :usuarioId
+              and d.data <= :fim
+            """)
+    BigDecimal somarPorUsuarioAteData(
+            @Param("usuarioId") Long usuarioId,
             @Param("fim") LocalDate fim
     );
 
@@ -45,6 +58,19 @@ public interface DespesaRepository extends JpaRepository<Despesa, Long> {
     List<Object[]> somarPorCategoria(
             @Param("usuarioId") Long usuarioId,
             @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+
+    @Query("""
+            select d.categoria.nome, coalesce(sum(d.valor), 0)
+            from Despesa d
+            where d.usuario.id = :usuarioId
+              and d.data <= :fim
+            group by d.categoria.nome
+            order by coalesce(sum(d.valor), 0) desc
+            """)
+    List<Object[]> somarPorCategoriaAteData(
+            @Param("usuarioId") Long usuarioId,
             @Param("fim") LocalDate fim
     );
 }

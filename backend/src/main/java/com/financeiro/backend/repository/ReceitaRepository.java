@@ -22,6 +22,8 @@ public interface ReceitaRepository extends JpaRepository<Receita, Long> {
 
     long countByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
 
+    long countByUsuarioIdAndDataLessThanEqual(Long usuarioId, LocalDate fim);
+
     @Query("""
             select coalesce(sum(r.valor), 0)
             from Receita r
@@ -31,6 +33,17 @@ public interface ReceitaRepository extends JpaRepository<Receita, Long> {
     BigDecimal somarPorUsuarioEPeriodo(
             @Param("usuarioId") Long usuarioId,
             @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+
+    @Query("""
+            select coalesce(sum(r.valor), 0)
+            from Receita r
+            where r.usuario.id = :usuarioId
+              and r.data <= :fim
+            """)
+    BigDecimal somarPorUsuarioAteData(
+            @Param("usuarioId") Long usuarioId,
             @Param("fim") LocalDate fim
     );
 }

@@ -44,11 +44,41 @@ public class RelatorioService {
     }
 
     @Transactional(readOnly = true)
+    public RelatorioMensalDTO gerarRelatorioAcumulado(Long usuarioId, int mes, int ano) {
+        PeriodoMensal periodo = criarPeriodo(mes, ano);
+        BigDecimal totalReceitas = receitaRepository.somarPorUsuarioAteData(usuarioId, periodo.fim());
+        BigDecimal totalDespesas = despesaRepository.somarPorUsuarioAteData(usuarioId, periodo.fim());
+        long totalTransacoes = receitaRepository.countByUsuarioIdAndDataLessThanEqual(usuarioId, periodo.fim())
+                + despesaRepository.countByUsuarioIdAndDataLessThanEqual(usuarioId, periodo.fim());
+
+        return new RelatorioMensalDTO(
+                mes,
+                ano,
+                totalReceitas,
+                totalDespesas,
+                totalReceitas.subtract(totalDespesas),
+                totalTransacoes,
+                obterGraficoGastosAcumulado(usuarioId, mes, ano)
+        );
+    }
+
+    @Transactional(readOnly = true)
     public List<GraficoGastosDTO> obterGraficoGastos(Long usuarioId, int mes, int ano) {
         PeriodoMensal periodo = criarPeriodo(mes, ano);
         BigDecimal totalDespesas = despesaRepository.somarPorUsuarioEPeriodo(usuarioId, periodo.inicio(), periodo.fim());
 
         return despesaRepository.somarPorCategoria(usuarioId, periodo.inicio(), periodo.fim())
+                .stream()
+                .map(resultado -> criarGraficoGasto(resultado, totalDespesas))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GraficoGastosDTO> obterGraficoGastosAcumulado(Long usuarioId, int mes, int ano) {
+        PeriodoMensal periodo = criarPeriodo(mes, ano);
+        BigDecimal totalDespesas = despesaRepository.somarPorUsuarioAteData(usuarioId, periodo.fim());
+
+        return despesaRepository.somarPorCategoriaAteData(usuarioId, periodo.fim())
                 .stream()
                 .map(resultado -> criarGraficoGasto(resultado, totalDespesas))
                 .toList();
