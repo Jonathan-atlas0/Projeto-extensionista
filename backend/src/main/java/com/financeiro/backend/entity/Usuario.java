@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -36,30 +38,44 @@ public class Usuario implements UserDetails {
 
   //Set da estrutura do nome do usuario
   @NotBlank(message = "Nome é Obrigatório")
-  @Column(nullable = false)
+  @Column(nullable = false, length = 100)
   private String nome;
 
   //Set da estrutra de anexo de email
   @Email(message = "E-mail inválido")
   @NotBlank(message = "E-mail é obrigatório")
-  @Column(nullable = false, unique = true)
+  @Column(nullable = false, unique = true, length = 150)
   private String email;
 
   //Set da estrutura e validação de senha
   @Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
   @NotBlank(message = "Senha é obrigatória")
-  @Column(nullable = false)
+  @Column(nullable = false, length = 255)
   private  String senha;
 
   //Set do construtor padrão de usuario
   @Builder.Default
-  @Column(nullable = false)
+  @Column(nullable = false, length = 20)
   private String role = "ROLE_USER";
 
   // Set do horario do cadastro
-  @Builder.Default
-  @Column(nullable = false, updatable = false)
-  private LocalDateTime criadoEm = LocalDateTime.now();
+  @Column(name = "criado_em", nullable = false, updatable = false)
+  private LocalDateTime criadoEm;
+
+  @Column(name = "atualizado_em", nullable = false)
+  private LocalDateTime atualizadoEm;
+
+  @PrePersist
+  void prePersist() {
+    LocalDateTime agora = LocalDateTime.now();
+    criadoEm = agora;
+    atualizadoEm = agora;
+  }
+
+  @PreUpdate
+  void preUpdate() {
+    atualizadoEm = LocalDateTime.now();
+  }
 
   // Metodo que retorna e gerenciar as permições e autenticações dos usuarios
   @Override

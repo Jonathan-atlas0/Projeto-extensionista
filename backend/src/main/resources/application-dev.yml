@@ -1,0 +1,4 @@
+dev-admin:
+  email: ${ADMIN_EMAIL:admin@fineduca.local}
+  password: ${ADMIN_PASSWORD:123456}
+  name: ${ADMIN_NAME:Administrador Demo}

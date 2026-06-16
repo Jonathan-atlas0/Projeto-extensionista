@@ -1,10 +1,12 @@
 package com.financeiro.backend.config;
 
 import com.financeiro.backend.service.UserDetailsServiceImpl;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,9 +43,19 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        //Remove o inicio "Brear " e fica apenas com o token
-        final String token = authheader.substring(7);
+        try {
+            autenticarToken(authheader.substring(7), request);
+        } catch (JwtException | IllegalArgumentException ex) {
+            SecurityContextHolder.clearContext();
+            ApiErrorWriter.write(response, HttpStatus.UNAUTHORIZED, "Token JWT inválido ou expirado");
+            return;
+        }
 
+        //Passa para o proximo filtro ou controller
+        filterChain.doFilter(request, response);
+    }
+
+    private void autenticarToken(String token, HttpServletRequest request) {
         //Extrai o email de dentro do token
         final String email = jwtUtil.extrairEmail(token);
 
@@ -66,8 +78,5 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
-
-        //Passa para o proximo filtro ou controller
-        filterChain.doFilter(request, response);
     }
 }
